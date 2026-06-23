@@ -16,6 +16,7 @@
     --shadow:0 6px 24px rgba(20,16,50,.06);
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden;max-width:100%}
   body{font-family:"Work Sans",sans-serif;color:var(--body);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased}
   h1,h2,h3,h4,.mono-t{font-family:"Sora",sans-serif;color:var(--title)}
   a{color:var(--theme);text-decoration:none}
@@ -24,7 +25,7 @@
   .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.6}
 
   /* hero */
-  header.hero{background:radial-gradient(1200px 400px at 80% -10%, rgba(123,93,255,.35), transparent 60%), linear-gradient(135deg,#0c0a18 0%,#171033 60%,#241653 100%);color:#fff;padding:30px 0 92px}
+  header.hero{position:relative;overflow:hidden;background:radial-gradient(1200px 400px at 80% -10%, rgba(123,93,255,.35), transparent 60%), linear-gradient(135deg,#0c0a18 0%,#171033 60%,#241653 100%);color:#fff;padding:30px 0 92px}
   .nav{display:flex;align-items:center;justify-content:space-between}
   .brand{font-family:"Sora";font-weight:800;font-size:20px;color:#fff;letter-spacing:.2px}
   .brand b{color:var(--theme2)}
@@ -60,6 +61,7 @@
   .hero-text h1{margin-top:14px}
   .hero-media img{width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.12);box-shadow:0 24px 70px rgba(123,93,255,.40);display:block}
   .tcard-img{width:100%;height:124px;object-fit:cover;border-radius:10px;border:1px solid var(--line);margin-bottom:4px;background:#0c0a18}
+  .tcard-img.tall{height:320px}
   @media(max-width:820px){.targets{grid-template-columns:1fr 1fr}.hero-grid{grid-template-columns:1fr;gap:18px}.hero-media{display:none}}
 
   /* KPI cards pulled up over the hero */
@@ -164,11 +166,11 @@
   <section>
     <div class="sec-h"><h2>Target models</h2><span class="hint">two architecturally distinct MoEs — a win must hold on <b>both</b>, or it's overfitting</span></div>
     <div class="grid2">
-      <div class="tcard"><img class="tcard-img" src="assets/img/qwen.jpg" alt="Qwen3-MoE" loading="lazy"><h4>Qwen3-MoE<span class="arch" style="color:var(--ok);background:rgba(14,138,22,.14);border-color:rgba(14,138,22,.3)">proven</span></h4>
+      <div class="tcard"><img class="tcard-img tall" src="assets/img/qwen.jpg" alt="Qwen3-MoE" loading="lazy"><h4>Qwen3-MoE<span class="arch" style="color:var(--ok);background:rgba(14,138,22,.14);border-color:rgba(14,138,22,.3)">proven</span></h4>
         <div class="role">model #1 · today's frontier</div>
         <p>Qwen3-30B-A3B / 35B-A3B — 128–256 experts, top-8, GQA head_dim 128, uniform full attention. Runs end-to-end at the current frontier with <b>100% token-match</b> vs llama.cpp.</p>
         <div class="spec">Q4_K_M · experts kept quantized · verified on RTX 5090 + PRO 6000</div></div>
-      <div class="tcard"><img class="tcard-img" src="assets/img/gemma-4.jpg" alt="Gemma 4" loading="lazy"><h4>Gemma 4<span class="arch" style="color:var(--warn);background:rgba(184,134,11,.14);border-color:rgba(184,134,11,.35)">wiring</span></h4>
+      <div class="tcard"><img class="tcard-img tall" src="assets/img/gemma-4.jpg" alt="Gemma 4" loading="lazy"><h4>Gemma 4<span class="arch" style="color:var(--warn);background:rgba(184,134,11,.14);border-color:rgba(184,134,11,.35)">wiring</span></h4>
         <div class="role">model #2 · the generality test</div>
         <p>Gemma 4 26B-A4B — 128 experts top-8 + shared, interleaved local-SWA / global attention, <b>head_dim 512</b>, dual RoPE. Deliberately unlike Qwen, so an optimization can't overfit one architecture.</p>
         <div class="spec">distinct attention + routing → the anti-overfit guard for the basket</div></div>
