@@ -104,6 +104,17 @@
   ],
   "prs": [
     {
+      "num": 6,
+      "title": "runtime/gguf: fail loudly on bad metadata array instead of desyncing the cursor",
+      "areas": [
+        "runtime"
+      ],
+      "label": "none",
+      "tps": 184.68,
+      "delta_pct": null,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/6"
+    },
+    {
       "num": 9,
       "title": "fix(runtime/gguf): reject malformed metadata arrays instead of desyncing the parse cursor",
       "areas": [
@@ -190,17 +201,6 @@
       "tps": 187.54,
       "delta_pct": null,
       "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/4"
-    },
-    {
-      "num": 6,
-      "title": "runtime/gguf: fail loudly on bad metadata array instead of desyncing the cursor",
-      "areas": [
-        "runtime"
-      ],
-      "label": "REJECT",
-      "tps": 187.27,
-      "delta_pct": null,
-      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/6"
     }
   ]
 }
