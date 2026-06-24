@@ -79,6 +79,7 @@ def funds():
         return None
 
 LOADING_TIMEOUT = 300   # bail if stuck in "loading" longer than this (image pull hung)
+SSH_CONNECT_TIMEOUT = 300  # bail if instance is "running" but SSH won't connect after 5 min
 
 def bring_up(v, iid, deadline_s):
     """Start the instance if needed and wait until SSH-reachable, within deadline_s.
@@ -92,16 +93,24 @@ def bring_up(v, iid, deadline_s):
         except Exception as e: print("  start:", str(e)[:150])
     deadline = time.time() + deadline_s
     loading_since = None
+    running_since = None
     while time.time() < deadline:
         info = info_of(v, iid)
         st = (info or {}).get("actual_status")
         if info and st == "running" and (info.get("public_ipaddr") or info.get("ssh_host")):
+            if running_since is None: running_since = time.time()
+            ssh_elapsed = int(time.time() - running_since)
             loading_since = None
             host, port = endpoint(info)
-            if wait_ssh(host, port, tries=4):     # box running; probe SSH (~40s), retry until deadline
+            if wait_ssh(host, port, tries=2):
                 print(f">> instance {iid}: ssh root@{host}:{port}")
                 return host, port
+            if ssh_elapsed > SSH_CONNECT_TIMEOUT:
+                print(f">> instance {iid} running for >{SSH_CONNECT_TIMEOUT}s but SSH won't connect — giving up")
+                return None
+            print(f"  instance {iid}: running ({ssh_elapsed}s) — SSH not ready yet ...")
         else:
+            running_since = None
             if st == "loading":
                 if loading_since is None: loading_since = time.time()
                 elapsed = int(time.time() - loading_since)
@@ -174,17 +183,23 @@ def main():
             except Exception as e: print("  destroy:", str(e)[:150])
             iid = 0
 
-    # 2) No working box yet → create one via the vast API and bring it up.
+    # 2) No working box yet → create one, retrying on different hosts if needed.
     if not iid:
-        iid = provision(v, args, skip_hosts={stuck_host} if 'stuck_host' in dir() and stuck_host else None)
-        if not iid: sys.exit("could not provision an instance")
-        created = True
-        ep = bring_up(v, iid, args.new_timeout)    # fresh box: longer (provision + boot + first apt)
-        if not ep:
-            try: v.destroy_instance(id=iid)         # clean up a born-dead box
-            except Exception: pass
-            sys.exit(f"new instance {iid} never came up")
-        host, port = ep
+        skip = {stuck_host} if 'stuck_host' in dir() and stuck_host else set()
+        for attempt in range(1, 4):   # up to 3 provision attempts
+            iid = provision(v, args, skip_hosts=skip)
+            if not iid: sys.exit("could not provision an instance")
+            created = True
+            ep = bring_up(v, iid, args.new_timeout)
+            if ep:
+                host, port = ep; break
+            bad_host = (info_of(v, iid) or {}).get("public_ipaddr")
+            print(f">> instance {iid} (host {bad_host}) never came up — destroying and trying another")
+            try: v.destroy_instance(id=iid)
+            except Exception as e: print("  destroy:", str(e)[:150])
+            if bad_host: skip.add(bad_host)
+            iid = 0
+            if attempt == 3: sys.exit("all 3 provision attempts failed — giving up")
 
     save_instance(iid)                              # persist the working id (the bot reuses it next run)
     if args.reuse and iid != args.reuse:
