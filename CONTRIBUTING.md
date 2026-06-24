@@ -48,6 +48,30 @@ You're paid for the **verified marginal speedup** your PR adds over the current 
 (they rebalance toward smaller gains as the runtime nears the hardware ceiling). See the
 [org reward model](https://github.com/gittensor-ai-lab) for the full design.
 
+## Maintainer-owned paths (eval, scoring & governance)
+
+The evaluation harness and scoring config are **maintainer-owned** and must not be changed
+in a contributor PR. They decide labels and emissions and are the trust anchor validators
+rely on — so a change here, however well-intentioned, can't ride in on the same PR it would
+score. These paths are protected:
+
+| Path | What |
+|---|---|
+| `eval/` | the PR-evaluation bot + GPU runner |
+| `bench/scripts/` | the on-box scoring harness (`evaluate.sh`, `label.py`, `accuracy*`, `_common.sh`, the eval prompt) |
+| `.gittensor/` | intra-repo emission weights |
+| `dashboard/data.json` | the live frontier ledger |
+| `.github/` | CI, `CODEOWNERS`, and this guard |
+
+**Enforcement.** A required **`sensitive-paths-guard`** check automatically fails any PR from a
+non-maintainer that touches these paths, and `CODEOWNERS` requires maintainer review — so such
+PRs **cannot merge**, regardless of content. The evaluator also grades with the harness pinned
+to the protected branch, so editing it in a PR never affects that PR's own score.
+
+**Improving the harness is welcome — just not via a direct PR.** Open an issue or discussion
+describing the change; if a maintainer agrees, they'll land it (with credit). Keep your own PRs
+scoped to `kernels/`, `runtime/`, and `moe/` — that's the rewarded optimization work.
+
 ## Style & scope
 
 - Match the surrounding code (portable CUDA is the production path; CuTe/tensor-core is
