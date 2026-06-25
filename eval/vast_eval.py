@@ -34,7 +34,7 @@ INSTANCE_FILE = os.path.expanduser(os.environ.get("VAST_INSTANCE_FILE", "~/.spar
 # IPs of hosts that repeatedly hang on image pull or never expose direct SSH, despite high vast
 # "reliability" scores (which track uptime, not image-pull / direct-SSH success). Whack-a-mole, but
 # the offending set is small and recurring. Override/extend via VAST_SKIP_HOSTS (comma-separated).
-_DEFAULT_SKIP = "94.177.17.69,120.238.149.205,192.3.91.246"
+_DEFAULT_SKIP = "94.177.17.69,120.238.149.205,192.3.91.246,47.253.144.202"
 SKIP_HOSTS_PERMANENT = set(filter(None, os.environ.get("VAST_SKIP_HOSTS", _DEFAULT_SKIP).split(",")))
 
 def sh(host, port, cmd, timeout=3600):
@@ -93,10 +93,10 @@ LOADING_TIMEOUT = 300   # bail if stuck in "loading" longer than this. The ~5GB 
                         # legitimately takes 3-5 min to pull on many hosts; 180s abandoned healthy
                         # boxes mid-pull. The host blacklist (not a tight timeout) handles the
                         # persistently-hung offenders.
-SSH_CONNECT_TIMEOUT = 120  # bail if "running" but SSH won't connect. A healthy box accepts SSH
-                           # within one poll of going "running"; a host that reports a phantom
-                           # "running" at 0s with no sshd never recovers — abandon it fast (2 min)
-                           # and let the provision-retry loop try another host.
+SSH_CONNECT_TIMEOUT = 180  # bail if "running" but SSH won't connect. Healthy boxes connect within
+                           # a poll or two of "running"; a phantom-"running" host never does. 180s
+                           # gives a slow-but-real box a little more slack than 120 before we give
+                           # up and let the retry loop try another host.
 
 def bring_up(v, iid, deadline_s):
     """Start the instance if needed and wait until SSH-reachable, within deadline_s.
@@ -142,18 +142,23 @@ def bring_up(v, iid, deadline_s):
     return None
 
 def provision(v, args, skip_hosts=None):
-    """Create a fresh instance via the vast API. Returns the new instance id, or None."""
-    offers = v.search_offers(query=f"gpu_name={args.gpu} num_gpus=1 cuda_vers>=12.8 inet_down>=100",
-                             order="dph_total", limit=10)
+    """Create a fresh instance via the vast API. Returns the new instance id, or None.
+    Prefers higher-reliability hosts among the cheapest offers (reliability doesn't fully predict
+    the phantom-"running" failure, but it screens out the genuinely flaky); the SSH timeout +
+    blacklist + retry loop handle the rest."""
+    base = f"gpu_name={args.gpu} num_gpus=1 cuda_vers>=12.8 inet_down>=100"
+    offers = v.search_offers(query=f"{base} reliability>0.97", order="dph_total", limit=25)
+    if not offers:   # reliability filter too strict / API quirk → fall back to the unfiltered search
+        offers = v.search_offers(query=base, order="dph_total", limit=25)
     if not offers:
         print(">> no matching offers"); return None
-    # Exclude permanently blacklisted hosts + any session-level skip_hosts.
+    # Exclude blacklisted + already-tried hosts, then from the cheapest dozen pick the MOST reliable.
     all_skip = SKIP_HOSTS_PERMANENT | (skip_hosts or set())
-    pool = [o for o in offers[:5] if o.get("public_ipaddr") not in all_skip]
-    if not pool: pool = [o for o in offers if o.get("public_ipaddr") not in all_skip]
-    if not pool: print(">> all offers are on blacklisted hosts"); return None
-    off = random.choice(pool)
-    print(f">> creating instance on offer {off['id']} {off.get('gpu_name')} ${off.get('dph_total'):.3f}/hr host={off.get('public_ipaddr','?')}")
+    cands = [o for o in offers if o.get("public_ipaddr") not in all_skip]
+    if not cands: print(">> all offers are on blacklisted/skipped hosts"); return None
+    off = max(cands[:12], key=lambda o: o.get("reliability2", 0))   # cheapest-12, best reliability
+    print(f">> creating instance on offer {off['id']} {off.get('gpu_name')} ${off.get('dph_total'):.3f}/hr "
+          f"host={off.get('public_ipaddr','?')} rel={off.get('reliability2','?')}")
     # Create via the CLI: the SDK's create_instance has no ssh/direct kwargs (those are CLI flags),
     # and --template_hash applies a preconfigured image+env. --raw returns {success, new_contract}.
     cmd = ["vastai", "create", "instance", str(off["id"]), "--disk", "120", "--ssh", "--direct", "--raw"]
@@ -206,8 +211,8 @@ def main():
     # 2) No working box yet → create one, retrying on different hosts if needed.
     if not iid:
         skip = {stuck_host} if 'stuck_host' in dir() and stuck_host else set()
-        MAX_ATTEMPTS = 5   # ~half of cheap offers are phantom-running hosts; each bad one now
-                           # costs only ~2 min (SSH_CONNECT_TIMEOUT), so try more before erroring
+        MAX_ATTEMPTS = 8   # ~half of cheap offers are phantom-running hosts; each bad one is bounded
+                           # by SSH_CONNECT_TIMEOUT, so try plenty of distinct hosts before erroring
         for attempt in range(1, MAX_ATTEMPTS + 1):
             iid = provision(v, args, skip_hosts=skip)
             if not iid: sys.exit("could not provision an instance")
