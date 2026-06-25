@@ -53,11 +53,14 @@ and tooling are appreciated and we'll review and merge good ones, but SN74 emits
 verified speedups, so they earn no reward. (The eval/scoring harness is maintainer-owned — see
 *Maintainer-owned paths* below.)
 
-**Evaluation is opt-in — check the box.** The RTX 5090 eval runs only once the
-**`- [x] Tested on RTX 5090`** box in the PR template is ticked. When it is, the bot greenlights
-the PR (adds **`test-on-5090`**) and evaluates it on the next poll; until then it marks the PR
-**`not-tested`** and does not evaluate. So fill in the template and tick the box when your PR is
-ready to be measured. (A maintainer can also add the `test-on-5090` label manually.)
+**Evaluation is opt-in and proof-gated.** The RTX 5090 eval runs only when **both** hold: you tick
+**`- [x] Tested on RTX 5090`** *and* fill the template's **decode tok/s** table with a real
+end-to-end improvement (`after > before`, from `bench/scripts/bench.sh` — not an isolated-kernel
+microbenchmark). Then the bot greenlights it (**`test-on-5090`**) and evaluates on the next poll.
+- Box ticked but the decode table empty / placeholder / no gain → **`needs-benchmark`**, not evaluated
+  (fill in real numbers and it greenlights automatically).
+- Box not ticked → **`not-tested`**, not evaluated.
+- A maintainer can add **`force-eval`** to evaluate regardless of the table.
 
 > ⚠️ Tick that box **only if you actually ran it on an RTX 5090** and pasted the benchmark log.
 > Checking it without testing is false attestation — it is treated as gaming and the account will

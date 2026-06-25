@@ -30,11 +30,16 @@ def current_instance(default):
 # NOT a per-subsystem budget.
 AREAS = {"kernels", "runtime", "moe", "bench"}
 
-# RTX 5090 evaluation is OPT-IN: a maintainer reviews a PR and adds EVAL_GATE_LABEL to greenlight it
-# for the (expensive) on-device eval. PRs without it get NOT_TESTED_LABEL and are NOT evaluated — this
-# stops the bot burning GPU on unvetted / spam / gaming PRs before a human has looked at them.
-EVAL_GATE_LABEL = "test-on-5090"
-NOT_TESTED_LABEL = "not-tested"
+# RTX 5090 evaluation is OPT-IN *and* proof-gated. A PR is only evaluated if it ticks the
+# "Tested on RTX 5090" box AND fills the decode before/after table with real numbers showing a
+# clear improvement (after > before) — checking the box alone is not enough (it wasted GPU on PRs
+# whose decode table was still the placeholder). States: greenlit -> test-on-5090 (eval); box
+# ticked but no valid before<after -> needs-benchmark (skip + ask for numbers); box unticked ->
+# not-tested (skip). FORCE_LABEL is a maintainer override that bypasses the benchmark check.
+EVAL_GATE_LABEL  = "test-on-5090"     # bot-set marker: greenlit, will be evaluated
+NOT_TESTED_LABEL = "not-tested"       # box not ticked
+NEEDS_BENCH_LABEL = "needs-benchmark" # box ticked but decode before/after missing/invalid/no-gain
+FORCE_LABEL      = "force-eval"       # maintainer override — eval regardless of the benchmark table
 
 def gh(args):
     return subprocess.run(["gh"] + args, capture_output=True, text=True)
@@ -158,12 +163,45 @@ def areas_for_pr(repo, num):
     files = json.loads(gh(["pr", "view", str(num), "-R", repo, "--json", "files"]).stdout or "{}").get("files", [])
     return {f["path"].split("/", 1)[0] for f in files} & set(AREAS)
 
-def pr_checkbox_tested(repo, num):
-    """True if the PR body has the template's 'Tested on RTX 5090' checkbox ticked
-    (a markdown '[x]' on a line mentioning 5090). Self-attested greenlight for eval."""
+def _decode_val(body, key):
+    """Pull a numeric decode tok/s out of the template table row '| before|after | <n> |'.
+    Returns the float, or None if the cell is the placeholder / non-numeric / absent."""
+    for ln in body.splitlines():
+        m = re.match(rf"\s*\|\s*{key}\b[^|]*\|\s*([^|]*?)\s*\|", ln, re.I)
+        if not m: continue
+        num = re.search(r"[-+]?\d+\.?\d*", m.group(1))
+        try: return float(num.group(0)) if num else None
+        except ValueError: return None
+    return None
+
+def greenlight_status(repo, num, pr_labels):
+    """Decide whether a PR may be evaluated. Returns (status, reason):
+      'ok'        — greenlit (force-eval label, or box ticked + real before<after decode numbers)
+      'no-bench'  — box ticked but the decode before/after table is missing/placeholder/no-gain
+      'unchecked' — the 'Tested on RTX 5090' box is not ticked
+    Checking the box is necessary but NOT sufficient — a clear decode improvement must be claimed."""
+    if FORCE_LABEL in pr_labels:
+        return "ok", "maintainer force-eval"
     body = (json.loads(gh(["pr", "view", str(num), "-R", repo, "--json", "body"]).stdout or "{}")
             .get("body") or "")
-    return any(re.search(r"\[\s*[xX]\s*\]", ln) and "5090" in ln for ln in body.splitlines())
+    if not any(re.search(r"\[\s*[xX]\s*\]", ln) and "5090" in ln for ln in body.splitlines()):
+        return "unchecked", "RTX-5090 box unchecked"
+    before, after = _decode_val(body, "before"), _decode_val(body, "after")
+    if before is None or after is None:
+        return "no-bench", "box ticked but decode before/after not filled with real numbers"
+    if after <= before:
+        return "no-bench", f"claimed decode before={before} ≥ after={after} (no improvement)"
+    return "ok", f"ticked + decode {before}→{after} tok/s (+{after - before:.1f})"
+
+def post_needs_bench_comment(repo, num):
+    body = ("<!-- sparkinfer-needs-bench -->\n## ⏳ Needs a benchmark to be evaluated\n\n"
+            "You ticked **Tested on RTX 5090** but the decode **before → after tok/s** table is still "
+            "empty / placeholder (or shows no gain). The on-device eval won't run until it shows a real "
+            "improvement.\n\nFill it from the **end-to-end** decode bench (not an isolated-kernel "
+            "microbench):\n```bash\nbench/scripts/bench.sh --download            # baseline (before)\n"
+            "bench/scripts/bench.sh --download            # your branch (after)\n```\n"
+            "Then the bot greenlights it on the next poll. (A maintainer can add `force-eval` to override.)")
+    gh(["pr", "comment", str(num), "-R", repo, "--body", body])
 
 def _owner_repo(repo):
     parts = repo.split("/"); return parts[0], parts[1]
@@ -348,23 +386,28 @@ def main():
         if not args.dry_run: apply_area_labels(args.repo, num, areas)
         if oid in evaluated_commits(args.repo, num):
             print(f"PR #{num} @ {oid}: already evaluated — skip eval"); continue
-        # Gate 3 — greenlight: a PR is evaluated only if the contributor checked the
-        # "Tested on RTX 5090" box in the PR template, OR a maintainer added `test-on-5090`
-        # (manual override). A checked box auto-applies the label. Otherwise -> `not-tested`,
-        # skip (no GPU). Re-checking the box / adding the label triggers eval on the next poll.
+        # Gate 3 — greenlight (proof-gated): evaluate only if the PR ticks the RTX-5090 box AND
+        # fills the decode before/after table with a real improvement (or a maintainer set force-eval).
+        # Reconcile labels each poll so a stale test-on-5090 can't keep a no-benchmark PR in the queue.
         pr_labels = {l["name"] for l in pr.get("labels", [])}
-        greenlit = (EVAL_GATE_LABEL in pr_labels) or pr_checkbox_tested(args.repo, num)
-        if not greenlit:
-            print(f"PR #{num}: not greenlit (RTX-5090 box unchecked, no {EVAL_GATE_LABEL}) "
-                  f"— mark not-tested, skip eval")
-            if not args.dry_run and NOT_TESTED_LABEL not in pr_labels:
-                add_label(args.repo, num, NOT_TESTED_LABEL)
-            continue
-        print(f"PR #{num}: greenlit for RTX 5090 eval")
-        if not args.dry_run:
-            if EVAL_GATE_LABEL not in pr_labels: add_label(args.repo, num, EVAL_GATE_LABEL)
-            if NOT_TESTED_LABEL in pr_labels: remove_label(args.repo, num, NOT_TESTED_LABEL)
-        pending.append((pr, num, branch, oid, ref, areas))
+        def _reconcile(keep, drop):
+            if args.dry_run: return
+            if keep not in pr_labels: add_label(args.repo, num, keep)
+            for L in drop:
+                if L in pr_labels: remove_label(args.repo, num, L)
+        status, reason = greenlight_status(args.repo, num, pr_labels)
+        if status == "ok":
+            print(f"PR #{num}: greenlit ({reason})")
+            _reconcile(EVAL_GATE_LABEL, [NOT_TESTED_LABEL, NEEDS_BENCH_LABEL])
+            pending.append((pr, num, branch, oid, ref, areas))
+        elif status == "no-bench":
+            print(f"PR #{num}: NOT greenlit ({reason}) — needs-benchmark, skip eval")
+            first_time = NEEDS_BENCH_LABEL not in pr_labels
+            _reconcile(NEEDS_BENCH_LABEL, [EVAL_GATE_LABEL, NOT_TESTED_LABEL])
+            if first_time and not args.dry_run: post_needs_bench_comment(args.repo, num)
+        else:  # unchecked
+            print(f"PR #{num}: not greenlit ({reason}) — mark not-tested, skip eval")
+            _reconcile(NOT_TESTED_LABEL, [EVAL_GATE_LABEL, NEEDS_BENCH_LABEL])
 
     if not args.dry_run and state_changed:
         save_copycat_log(copy_log)
