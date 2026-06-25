@@ -83,6 +83,17 @@ window.SPARKINFER = {
   ],
   "prs": [
     {
+      "num": 53,
+      "title": "Enable split-K down projection by default (+6% decode)",
+      "areas": [
+        "kernels"
+      ],
+      "label": "none",
+      "tps": 260.69,
+      "delta_pct": null,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/53"
+    },
+    {
       "num": 52,
       "title": "perf(kernels): two-pass multi-block decode argmax (1 SM -> all SMs)",
       "areas": [
