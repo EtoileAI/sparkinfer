@@ -599,6 +599,10 @@ def main():
         push_github_state("eval: record copycat detections + any auto-blocks")
 
     if not pending:
+        # No new commits to grade, but still run the merge workflow: auto-merge a standing
+        # `merge-first` winner from a previous round and flag rivals of a just-merged winner.
+        if not args.dry_run:
+            reconcile_merge_labels(args.repo)
         print("done — no merges (manual)."); return
 
     if args.dry_run:
