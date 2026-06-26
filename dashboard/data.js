@@ -4,12 +4,12 @@ window.SPARKINFER = {
   "status": {
     "gpu": "RTX 5090 · sm_120 · CUDA 13",
     "model": "Qwen3-30B-A3B · Q4_K_M",
-    "frontier_tps": 291.58,
+    "frontier_tps": 309.45,
     "ref_name": "llama.cpp",
     "ref_tps": 365.73,
     "vram_gb": 21.4,
     "token_match": 0.96,
-    "kl": 0.1482
+    "kl": 0.1529
   },
   "passes_gpu": "RTX PRO 6000",
   "passes": [
@@ -82,6 +82,18 @@ window.SPARKINFER = {
     }
   ],
   "prs": [
+    {
+      "num": 67,
+      "title": "perf(moe): mmvq down split-K occupancy for M-tier decode",
+      "areas": [
+        "kernels",
+        "runtime"
+      ],
+      "label": "M",
+      "tps": 309.45,
+      "delta_pct": 6.1,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/67"
+    },
     {
       "num": 69,
       "title": "Split-K the int8 dp4a MoE down GEMV (+3.4% decode)",
@@ -481,6 +493,12 @@ window.SPARKINFER = {
       "name": "int8 dp4a MMVQ for the Q6_K ",
       "tps": 291.58,
       "pr": 65,
+      "date": "2026-06-26"
+    },
+    {
+      "name": "mmvq down split-K occupancy ",
+      "tps": 309.45,
+      "pr": 67,
       "date": "2026-06-26"
     }
   ]
