@@ -4,12 +4,12 @@ window.SPARKINFER = {
   "status": {
     "gpu": "RTX 5090 · sm_120 · CUDA 13",
     "model": "Qwen3-30B-A3B · Q4_K_M",
-    "frontier_tps": 262.17,
+    "frontier_tps": 279.11,
     "ref_name": "llama.cpp",
     "ref_tps": 365.73,
     "vram_gb": 21.4,
     "token_match": 0.99,
-    "kl": 0.1457
+    "kl": 0.1473
   },
   "passes_gpu": "RTX PRO 6000",
   "passes": [
@@ -82,6 +82,18 @@ window.SPARKINFER = {
     }
   ],
   "prs": [
+    {
+      "num": 59,
+      "title": "Adopt llama.cpp Q4_K mul_mat_vec_q for attention GEMVs (+9.3% decode, top-1 0.99)",
+      "areas": [
+        "kernels",
+        "runtime"
+      ],
+      "label": "L",
+      "tps": 279.11,
+      "delta_pct": 6.5,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/59"
+    },
     {
       "num": 58,
       "title": "perf(attention): flash_decode_split ldg + n_splits=16 combine fast path",
@@ -396,6 +408,12 @@ window.SPARKINFER = {
       "tps": 262.17,
       "pr": 52,
       "date": "2026-06-25"
+    },
+    {
+      "name": "Adopt llama.cpp Q4_K mul_mat",
+      "tps": 279.11,
+      "pr": 59,
+      "date": "2026-06-26"
     }
   ]
 };
