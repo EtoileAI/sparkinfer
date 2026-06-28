@@ -4,7 +4,7 @@ window.SPARKINFER = {
   "status": {
     "gpu": "RTX 5090 · sm_120 · CUDA 13",
     "model": "Qwen3-30B-A3B · Q4_K_M",
-    "frontier_tps": 371.27,
+    "frontier_tps": 388.68,
     "ref_name": "llama.cpp",
     "ref_tps": 365.73,
     "vram_gb": 21.4,
@@ -610,6 +610,12 @@ window.SPARKINFER = {
       "name": "fuse per-head Q/K-norm and Q",
       "tps": 371.27,
       "pr": 76,
+      "date": "2026-06-28"
+    },
+    {
+      "name": "skip the unused per-expert t",
+      "tps": 388.68,
+      "pr": 73,
       "date": "2026-06-28"
     }
   ]
