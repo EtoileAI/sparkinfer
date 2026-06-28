@@ -39,12 +39,13 @@ _DEFAULT_SKIP = "94.177.17.69,120.238.149.205,192.3.91.246,47.253.144.202,175.12
 SKIP_HOSTS_PERMANENT = set(filter(None, os.environ.get("VAST_SKIP_HOSTS", _DEFAULT_SKIP).split(",")))
 
 # --pinned: reuse a stable, known-good box (cached model, good download speed) as the default and
-# NEVER destroy it. If it can't be brought up within --reuse-timeout (5 min), don't provision a new
-# box immediately — leave the pinned box intact and exit PINNED_RETRY_RC so the next scheduled run
-# (on the next scheduled run) retries. Only after REUSE_MAX_RETRIES consecutive misses do we provision a fresh
-# box (the pinned one is still kept). Counter persists in REUSE_RETRY_FILE across runs.
+# NEVER destroy it. If it exists but can't be brought up within --reuse-timeout, provision a fresh
+# box right away (default REUSE_MAX_RETRIES=0) and re-pin — stopped vast boxes that won't resume
+# (host busy) would otherwise STALL a manual run, which has no scheduled retry to fall back on. Set
+# VAST_REUSE_MAX_RETRIES>0 to instead wait across that-many scheduled runs before provisioning.
+# Counter persists in REUSE_RETRY_FILE across runs.
 REUSE_RETRY_FILE = os.path.expanduser(os.environ.get("VAST_REUSE_RETRY_FILE", "~/.sparkinfer_reuse_retries"))
-REUSE_MAX_RETRIES = int(os.environ.get("VAST_REUSE_MAX_RETRIES", "2"))
+REUSE_MAX_RETRIES = int(os.environ.get("VAST_REUSE_MAX_RETRIES", "0"))
 PINNED_RETRY_RC = 75   # distinct exit code: "pinned box not up; retry on the next run" (not an error)
 def _reuse_retries():
     try: return int(open(REUSE_RETRY_FILE).read().strip())
