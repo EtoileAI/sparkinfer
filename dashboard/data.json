@@ -83,6 +83,19 @@
   ],
   "prs": [
     {
+      "num": 83,
+      "title": "perf(moe): requantize the Q6_K MoE down to Q4_K at load (+2.6% decode)",
+      "areas": [
+        "runtime"
+      ],
+      "label": "XS",
+      "tps": 390.25,
+      "delta_pct": 2.4,
+      "top1": 0.95,
+      "kl": 0.2035,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/83"
+    },
+    {
       "num": 72,
       "title": "perf(gemm): split-K the router projection GEMV for decode occupancy (+3% decode)",
       "areas": [
