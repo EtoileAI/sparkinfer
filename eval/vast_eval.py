@@ -305,7 +305,13 @@ def main():
         if args.ref.startswith("pull/") and args.ref.endswith("/head"):
             checkout = f"{reset}; git fetch -q origin '{args.ref}' && git checkout -qf FETCH_HEAD"
         else:
-            checkout = f"{reset}; git fetch -q origin '{args.ref}' 2>/dev/null || true && git checkout -qf '{args.ref}'"
+            # Branch ref (e.g. 'main' or 'origin/main'): fetch the BRANCH by name and check out
+            # exactly what was fetched (FETCH_HEAD). Fetching the literal 'origin/main' fails (no such
+            # ref on the remote — the branch is 'main'); the old `|| true` then silently checked out a
+            # STALE local tracking ref, so on a REUSED box the same-box baseline built pre-merge code
+            # (e.g. it measured main WITHOUT a just-merged PR). Strip any 'origin/' to the branch name.
+            branch = args.ref.split("origin/", 1)[-1]
+            checkout = f"{reset}; git fetch -q origin '{branch}' && git checkout -qf FETCH_HEAD"
         # g++-12: nvcc 12.8 breaks against Ubuntu 24.04's GCC 13.3 libstdc++ (cstdio /__gnu_cxx
         # errors). The build pins CMAKE_CUDA_HOST_COMPILER=g++-12, so it must be present.
         setup = ("export DEBIAN_FRONTEND=noninteractive; "
