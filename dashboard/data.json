@@ -83,6 +83,20 @@
   ],
   "prs": [
     {
+      "num": 51,
+      "title": "runtime: prompt-lookup speculative decoding for bs=1 MoE decode",
+      "areas": [
+        "runtime"
+      ],
+      "label": "none",
+      "tps": 419.68,
+      "delta_pct": 0.0,
+      "top1": 0.97,
+      "kl": 0.1417,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/51",
+      "proof_url": "https://gittensor-ai-lab.github.io/sparkinfer-log/?run=0051-d7824bf"
+    },
+    {
       "num": 86,
       "title": "perf(decode): single-pass MoE top-k + fused RoPE/KV-append (+3.2% decode)",
       "areas": [
