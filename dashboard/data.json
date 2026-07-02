@@ -114,6 +114,27 @@
   ],
   "prs": [
     {
+      "num": 124,
+      "title": "Optimize 16k long-context GQA KV load: hoist block-table lookup + vectorize",
+      "areas": [
+        "kernels"
+      ],
+      "label": "M",
+      "tps": 240.57,
+      "delta_pct": 7.7,
+      "top1": 0.9579,
+      "kl": 0.0159,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/124",
+      "eval_mode": "longctx",
+      "score_context": 16384,
+      "ctx_2048_tps": 279.9,
+      "ctx_16384_tps": 240.57,
+      "guard_2k_baseline": 279.66,
+      "guard_2k_ratio": 1.0009,
+      "guard_2k_pass": true,
+      "proof_url": "https://gittensor-ai-lab.github.io/sparkinfer-log/?run=0124-e024855"
+    },
+    {
       "num": 116,
       "title": "perf(moe): PDL overlap on gate_up -> quant_h -> down MMVQ chain",
       "areas": [
@@ -745,17 +766,6 @@
       "tps": 187.06,
       "delta_pct": null,
       "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/28"
-    },
-    {
-      "num": 4,
-      "title": "kernels/attention: fix flash_prefill causal mask for seqlen_q != seqlen_kv",
-      "areas": [
-        "kernels"
-      ],
-      "label": "none",
-      "tps": 184.7,
-      "delta_pct": null,
-      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/4"
     }
   ],
   "landed": [
