@@ -109,6 +109,29 @@
   ],
   "prs": [
     {
+      "num": 123,
+      "title": "Optimize 16k long-context GQA flash decode",
+      "areas": [
+        "kernels",
+        "runtime"
+      ],
+      "label": "XL",
+      "tps": 221.02,
+      "delta_pct": 31.6,
+      "top1": 0.9427,
+      "kl": 0.0136,
+      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/123",
+      "eval_mode": "longctx",
+      "score_context": 16384,
+      "ctx_2048_tps": 275.55,
+      "ctx_16384_tps": 221.02,
+      "ctx_32768_tps": 146.63,
+      "guard_2k_baseline": 275.58,
+      "guard_2k_ratio": 0.9999,
+      "guard_2k_pass": true,
+      "proof_url": "https://gittensor-ai-lab.github.io/sparkinfer-log/?run=0123-8a7f5d9"
+    },
+    {
       "num": 122,
       "title": "perf(attn): fuse QK-norm+RoPE+KV-append and emit Q8_1(attn) in flash combine",
       "areas": [
@@ -721,17 +744,6 @@
       "tps": 184.7,
       "delta_pct": null,
       "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/4"
-    },
-    {
-      "num": 6,
-      "title": "runtime/gguf: fail loudly on bad metadata array instead of desyncing the cursor",
-      "areas": [
-        "runtime"
-      ],
-      "label": "none",
-      "tps": 184.68,
-      "delta_pct": null,
-      "url": "https://github.com/gittensor-ai-lab/sparkinfer/pull/6"
     }
   ],
   "landed": [
